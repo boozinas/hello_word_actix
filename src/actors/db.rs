@@ -1,8 +1,8 @@
 use crate::actix::{Actor, Handler, Message, SyncContext};
 use crate::diesel::prelude::*;
 use crate::models::{Users, NewUser};
-// use crate::schema::users::dsl::{users, id, name, geopoints};
-use crate::schema::users::dsl::*;
+use crate::schema::users::dsl::{users, id, name, geopoints};
+//use crate::schema::users::dsl::*;
 use diesel::{
     r2d2::{ConnectionManager, Pool},
     PgConnection,
@@ -22,8 +22,8 @@ pub struct Create {
 #[rtype(result="QueryResult<Users>")]
 pub struct Update {
     pub id: i32,
-    pub title: String,
-    pub body: String,
+    pub name: String,
+    pub geopoints: String,
 }
 
 #[derive(Message)]
@@ -56,3 +56,36 @@ impl Handler<Create> for DbActor{
         .get_result::<Users>(&conn)
     }
 } 
+
+impl Handler<Update> for DbActor{
+    type Result = QueryResult<Users>;
+    
+    fn handle(&mut self, msg: Update, _: &mut Self::Context) -> Self::Result {
+        let conn = self.0.get().expect("Unable to get a connection");
+        diesel::update(users).filter(id.eq(msg.id))
+        .set((name.eq(msg.name), geopoints.eq(msg.geopoints)))
+        .get_result::<Users>(&conn)
+    }
+} 
+
+impl Handler<Delete> for DbActor{
+    type Result = QueryResult<Users>;
+    
+    fn handle(&mut self, msg: Delete, _: &mut Self::Context) -> Self::Result {
+        let conn = self.0.get().expect("Unable to get a connection");
+        diesel::delete(users)
+        .filter(id.eq(msg.id))
+        .get_result::<Users>(&conn)
+    }
+}
+
+
+impl Handler<GetUsers> for DbActor{
+    type Result = QueryResult<Vec<Users>>;
+    
+    fn handle(&mut self, msg: GetUsers, _: &mut Self::Context) -> Self::Result {
+        let conn = self.0.get().expect("Unable to get a connection");
+        users.select((name, geopoints, id)).get_results::<Users>(&conn)
+
+    }
+}
